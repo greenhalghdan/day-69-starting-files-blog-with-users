@@ -36,6 +36,10 @@
 
         <!-- Comments Area -->
         <!-- TODO: Add a CKEditor for commenting below -->
+        {% from 'bootstrap5/form.html' import render_form %}
+        {{ render_form(form) }}
+        {{ ckeditor.load() }}
+        {{ ckeditor.config(name='comment') }}
         <div class="comment">
           <!-- TODO: Show all the comments on a post -->
           <ul class="commentList">
