@@ -76,7 +76,7 @@ class Comment(db.Model):
     comment_author = relationship("User", back_populates="comments")
     post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"))
     parent_post = relationship("BlogPost", back_populates="comments")
-    text = db.Column(db.Text, nullable=False)
+    text = db.Column(db.Text, nullable=True)
 
 
 with app.app_context():
@@ -144,12 +144,26 @@ def get_all_posts():
 
 
 # TODO: Allow logged-in users to comment on posts
-@app.route("/post/<int:post_id>")
+@app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
-    author = db.session.execute(db.select(User).where(User.id == requested_post.author_id)).scalar()
+    # Add the CommentForm to the route
     comment_form = CommentForm()
-    return render_template("post.html", post=requested_post, author=author, form=comment_form)
+    # Only allow logged-in users to comment on posts
+    if comment_form.validate_on_submit():
+        if not current_user.is_authenticated:
+            flash("You need to login or register to comment.")
+            return redirect(url_for("login"))
+
+        new_comment = Comment(
+            text=comment_form.body.data,
+            comment_author=current_user,
+            parent_post=requested_post
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+    comments = db.session.execute(db.select(Comment).where(Comment.post_id == post_id)).scalars().all()
+    return render_template("post.html", post=requested_post, current_user=current_user, coment_form=comment_form, comments=comments)
 
 
 # TODO: Use a decorator so only an admin user can create a new post
@@ -158,6 +172,7 @@ def show_post(post_id):
 def add_new_post():
     form = CreatePostForm()
     if form.validate_on_submit():
+
         new_post = BlogPost(
             title=form.title.data,
             subtitle=form.subtitle.data,
