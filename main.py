@@ -10,9 +10,12 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 # Import your forms from the forms.py
-from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
+from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm, ContactForm
 import os
+import smtplib
 
+MYEMAIL = os.environ.get('email')
+PASSWORD = os.environ.get('password')
 
 '''
 Make sure the required packages are installed: 
@@ -43,6 +46,7 @@ def load_user(user_id):
 
 # CONNECT TO DB
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", "sqlite:///posts.db")
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
 db = SQLAlchemy()
 db.init_app(app)
 
@@ -78,6 +82,16 @@ class Comment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"))
     parent_post = relationship("BlogPost", back_populates="comments")
     text = db.Column(db.Text, nullable=True)
+
+
+class Messages(db.Model):
+    __tablename__ = "messages"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(250), unique=False, nullable=False)
+    email = db.Column(db.String(250), unique=False, nullable=False)
+    phonenumber = db.Column(db.String, unique=False, nullable=False)
+    message = db.Column(db.String(250), unique=False, nullable=False)
+    date = db.Column(db.String(250), nullable=False)
 
 
 with app.app_context():
@@ -226,10 +240,33 @@ def about():
     return render_template("about.html")
 
 
-@app.route("/contact")
+@app.route("/contact", methods=["GET", "POST"])
 def contact():
-    return render_template("contact.html")
+    form = ContactForm()
+    if form.validate_on_submit():
+        name = form.name.data
+        email = form.email.data
+        phoneNumber = form.phoneNumber.data
+        Message = form.Message.data
+        with smtplib.SMTP("eu-smtp-outbound-1.mimecast.com", 587) as connection:
+            connection.starttls()
+            connection.login(user=MYEMAIL, password=PASSWORD)
+            connection.sendmail(from_addr="blogsite@suffoolkmotorcyclespares.com",
+                                to_addrs=MYEMAIL,
+                                msg=f"subject:You have a new message\n\n Name: {name}\n Email: {email}\n Phone Number: {phoneNumber}\n Message: {Message}")
+            flash("Message sent")
+        new_message = Messages(
+            name=name,
+            email=email,
+            phonenumber=phoneNumber,
+            message=Message,
+            date=date.today().strftime("%B %d, %Y")
+        )
+        db.session.add(new_message)
+        db.session.commit()
+
+    return render_template("contact.html", form=form)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)

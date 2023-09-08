@@ -2,7 +2,7 @@ from builtins import type
 
 import wtforms
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SubmitField, TextAreaField, EmailField
 from wtforms.validators import DataRequired, URL
 from flask_ckeditor import CKEditorField
 
@@ -35,3 +35,10 @@ class LoginForm(FlaskForm):
 class CommentForm(FlaskForm):
     body = CKEditorField('comment')
     submit = SubmitField('Add Comment')
+
+class ContactForm(FlaskForm):
+    name = StringField("Name", validators=[DataRequired()])
+    email = EmailField("Email Address", validators=[DataRequired()])
+    phoneNumber = wtforms.StringField("Phone Number", validators=[DataRequired()])
+    Message = TextAreaField("Message", validators=[DataRequired()])
+    submit = SubmitField("Submit Message")
