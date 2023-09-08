@@ -42,7 +42,7 @@ login_manager.init_app(app)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.get_or_404(User, user_id)
+    return db.get_or_404(users, user_id)
 
 # CONNECT TO DB
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", "sqlite:///posts.db")
@@ -55,8 +55,8 @@ db.init_app(app)
 class BlogPost(db.Model):
     __tablename__ = "blog_posts"
     id = db.Column(db.Integer, primary_key=True)
-    author_id = db.Column(db.Integer, db.ForeignKey("User.id"))
-    author = relationship("User", back_populates="posts")
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    author = relationship("users", back_populates="posts")
     title = db.Column(db.String(250), unique=True, nullable=False)
     subtitle = db.Column(db.String(250), nullable=False)
     date = db.Column(db.String(250), nullable=False)
@@ -64,8 +64,8 @@ class BlogPost(db.Model):
     img_url = db.Column(db.String(250), nullable=False)
     comments = relationship("Comment", back_populates="parent_post")
 # TODO: Create a User table for all your registered users.
-class User(UserMixin, db.Model):
-    __tablename__ = 'User'
+class users(UserMixin, db.Model):
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(250), unique=True, nullable=False)
     password = db.Column(db.String(250), unique=True, nullable=False)
@@ -77,8 +77,8 @@ class User(UserMixin, db.Model):
 class Comment(db.Model):
     __tablename__ = "comments"
     id = db.Column(db.Integer, primary_key=True)
-    author_id = db.Column(db.Integer, db.ForeignKey("User.id"))
-    comment_author = relationship("User", back_populates="comments")
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    comment_author = relationship("users", back_populates="comments")
     post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"))
     parent_post = relationship("BlogPost", back_populates="comments")
     text = db.Column(db.Text, nullable=True)
@@ -113,12 +113,12 @@ def register():
     form = RegisterForm()
 
     if form.validate_on_submit():
-        usernames = db.session.execute(db.select(User)).scalars().all()
+        usernames = db.session.execute(db.select(users)).scalars().all()
         for username in usernames:
             if username.email == form.email.data:
                 flash("Email address has already been registered, please login")
                 return redirect(url_for("login"))
-        new_user = User(
+        new_user = users(
         name = form.name.data,
         email = form.email.data,
         password = generate_password_hash(password=form.password.data, method='pbkdf2:sha256', salt_length=8)
@@ -135,7 +135,7 @@ def register():
 def login():
     login_form = LoginForm()
     if login_form.validate_on_submit():
-        result = db.session.execute(db.select(User).where(User.email == login_form.email.data)).scalar()
+        result = db.session.execute(db.select(users).where(users.email == login_form.email.data)).scalar()
         if check_password_hash(result.password, login_form.password.data):
             print("1")
             login_user(result)
